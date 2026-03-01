@@ -18,12 +18,18 @@ std::vector<std::string> getAllDirectories(const std::string& rootPath){
     return directories;
 }
 
-std::unordered_map<size_t, std::vector<std::string>> buildSizeMap(const std::string& directory){
+std::unordered_map<size_t, std::vector<std::string>> buildSizeMap(const std::string& directory, bool includeHidden = false){
     std::unordered_map<size_t, std::vector<std::string>> sizeMap;
 
     for (const auto& entry : std::filesystem::directory_iterator(directory)){
         if(entry.is_regular_file()){
             std::string filePath = entry.path().string();
+            std::string fileName = entry.path().filename().string();
+
+            if (!includeHidden && fileName[0] == '.'){
+                continue;
+            }
+
             size_t fileSize = std::filesystem::file_size(filePath);
             sizeMap[fileSize].push_back(filePath);
         }
@@ -129,15 +135,26 @@ void interactiveDelete(const std::unordered_map<std::string, std::vector<std::st
 int main(int argc, char* argv[]){
     bool recursive = false;
     bool deleteFiles = false;
+    bool includeHidden = false;
     std::string directory;
 
     for (int i = 1; i< argc; i++){
         std::string arg = argv[i];
 
-        if (arg == "-r" || arg == "--recursive"){
+        if (arg == "-h" || arg == "--help"){
+            std::cout << "Usage: " << argv[0] << " [options] <directory_path>" << std::endl;
+            std::cout << "Options:" << std::endl;
+            std::cout << "  -h, --help        Show this help message and exit" << std::endl;
+            std::cout << "  -r, --recursive   Search for duplicates in subdirectories" << std::endl;
+            std::cout << "  -d, --delete      Interactively delete duplicates" << std::endl;
+            std::cout << "  -a, --all         Include hidden files in the search" << std::endl;
+            return 0;
+        } else if (arg == "-r" || arg == "--recursive"){
             recursive = true;
         } else if (arg == "-d" || arg == "--delete") {
             deleteFiles = true;
+        } else if (arg == "-a" || arg == "--all") {
+            includeHidden = true;
         } else {
             directory = arg;
         }
@@ -153,7 +170,7 @@ int main(int argc, char* argv[]){
         std::vector<std::string> alldirs = getAllDirectories(directory);
 
         for (const auto& dir : alldirs){
-            std::unordered_map<size_t, std::vector<std::string>> sizeMap = buildSizeMap(dir);
+            std::unordered_map<size_t, std::vector<std::string>> sizeMap = buildSizeMap(dir, includeHidden);
             std::unordered_map<std::string, std::vector<std::string>> fileMap = findDuplicates(sizeMap);
 
             if (!fileMap.empty()){
@@ -167,7 +184,7 @@ int main(int argc, char* argv[]){
             
         }
     } else {
-        std::unordered_map<size_t, std::vector<std::string>> sizeMap = buildSizeMap(directory);
+        std::unordered_map<size_t, std::vector<std::string>> sizeMap = buildSizeMap(directory, includeHidden);
         std::unordered_map<std::string, std::vector<std::string>> fileMap = findDuplicates(sizeMap);
 
         if (!fileMap.empty()){

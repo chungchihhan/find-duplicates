@@ -12,45 +12,25 @@ A lightweight, efficient command-line tool for finding and managing duplicate fi
 
 ## Installation
 
-### Building from Source
-
-**Prerequisites:**
-
-- C++17 compatible compiler (g++, clang++)
-- Make
-
-**Build and Install:**
+### Quick Install (Recommended)
 
 ```bash
-# Clone or download the repository
-git clone <repository-url>
-cd find-duplicates
-
-# Build the binary
-make
-
-# (Optional) Install system-wide
-sudo make install
+curl -fsSL https://raw.githubusercontent.com/chungchihhan/find-duplicates/main/install.sh | bash
 ```
 
-The `make install` command installs `fdup` to `/usr/local/bin/`, making it available globally.
+### From Source
+
+```bash
+git clone https://github.com/chungchihhan/find-duplicates.git
+cd find-duplicates
+make
+sudo make install
+```
 
 ### Uninstall
 
 ```bash
-sudo make uninstall
-```
-
-### Manual Installation
-
-If you prefer not to use `make install`, you can run the binary directly:
-
-```bash
-# Build only
-make
-
-# Run from current directory
-./fdup <directory>
+sudo rm /usr/local/bin/fdup
 ```
 
 ## Usage

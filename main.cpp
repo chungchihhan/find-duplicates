@@ -8,10 +8,15 @@ std::vector<std::string> getAllDirectories(const std::string& rootPath){
     std::vector<std::string> directories;
 
     directories.push_back(rootPath);
-    
-    for (const auto& entry : std::filesystem::recursive_directory_iterator(rootPath)){
-        if (entry.is_directory()){
-            directories.push_back(entry.path().string());
+    try{
+        for (const auto& entry : std::filesystem::recursive_directory_iterator(rootPath, std::filesystem::directory_options::skip_permission_denied)){
+            if (entry.is_directory()){
+                directories.push_back(entry.path().string());
+            }
+        }
+    } catch (const std::filesystem::filesystem_error& e){
+        if (e.path1().string() == rootPath) {
+          std::cerr << "⚠️ Warning: Cannot access root directory: " << rootPath << std::endl;
         }
     }
     
@@ -21,18 +26,22 @@ std::vector<std::string> getAllDirectories(const std::string& rootPath){
 std::unordered_map<size_t, std::vector<std::string>> buildSizeMap(const std::string& directory, bool includeHidden = false){
     std::unordered_map<size_t, std::vector<std::string>> sizeMap;
 
-    for (const auto& entry : std::filesystem::directory_iterator(directory)){
-        if(entry.is_regular_file()){
-            std::string filePath = entry.path().string();
-            std::string fileName = entry.path().filename().string();
-
-            if (!includeHidden && fileName[0] == '.'){
-                continue;
+    try {
+        for (const auto& entry : std::filesystem::directory_iterator(directory, std::filesystem::directory_options::skip_permission_denied)){
+            if(entry.is_regular_file()){
+                std::string filePath = entry.path().string();
+                std::string fileName = entry.path().filename().string();
+                
+                if (!includeHidden && !fileName.empty() && fileName[0] == '.'){
+                    continue;
+                }
+                
+                size_t fileSize = std::filesystem::file_size(filePath);
+                sizeMap[fileSize].push_back(filePath);
             }
-
-            size_t fileSize = std::filesystem::file_size(filePath);
-            sizeMap[fileSize].push_back(filePath);
         }
+    } catch (const std::filesystem::filesystem_error& e){
+        std::cerr << "⚠️ Skipped (no permission): " << directory << std::endl;
     } 
 
     return sizeMap;

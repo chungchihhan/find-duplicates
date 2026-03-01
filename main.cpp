@@ -2,17 +2,32 @@
 #include <filesystem>
 #include <fstream>
 #include <functional>
+#include <limits>
+
+std::vector<std::string> getAllDirectories(const std::string& rootPath){
+    std::vector<std::string> directories;
+
+    directories.push_back(rootPath);
+    
+    for (const auto& entry : std::filesystem::recursive_directory_iterator(rootPath)){
+        if (entry.is_directory()){
+            directories.push_back(entry.path().string());
+        }
+    }
+    
+    return directories;
+}
 
 std::unordered_map<size_t, std::vector<std::string>> buildSizeMap(const std::string& directory){
     std::unordered_map<size_t, std::vector<std::string>> sizeMap;
 
-    for (const auto& entry : std::filesystem::recursive_directory_iterator(directory)){
+    for (const auto& entry : std::filesystem::directory_iterator(directory)){
         if(entry.is_regular_file()){
             std::string filePath = entry.path().string();
             size_t fileSize = std::filesystem::file_size(filePath);
             sizeMap[fileSize].push_back(filePath);
         }
-    };
+    } 
 
     return sizeMap;
 }
@@ -53,6 +68,10 @@ void printDuplicates(const std::unordered_map<std::string, std::vector<std::stri
         const std::string& hash = pair.first;
         const std::vector<std::string>& paths = pair.second;
 
+        if (paths.size() <= 1 ){
+            continue;
+        }
+
         if (paths.size() > 1){
             std::cout << "Duplicate files found with hash: " << hash << std::endl;
 
@@ -64,15 +83,95 @@ void printDuplicates(const std::unordered_map<std::string, std::vector<std::stri
     }
 }
 
+void interactiveDelete(const std::unordered_map<std::string, std::vector<std::string>>& fileMap ){
+    for (const auto& pair: fileMap){
+        const std::string& hash = pair.first;
+        const std::vector<std::string>& paths = pair.second;
 
-int main(){
+        if (paths.size() <= 1 ){
+            continue;
+        }
+
+        int choice;
+        int index = 1;
+        std::cout << "Which one do you wanna keep?" << std::endl;
+        for (const auto& path : paths){
+            std::cout << " [" << index << "] " << path << std::endl;
+            index++;
+        }
+        
+        std::cin >> choice;
+        if (!std::cin){
+            std::cerr << "Invalid input" << std::endl;
+            std::cin.clear();
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); 
+            continue;
+        }
+
+        if (choice < 1 || choice > paths.size()){
+            std::cerr << "Invalid choice. You must select a number between 1 and " << paths.size() << std::endl;
+            continue;
+        }
+
+        int currentIndex = 1;
+        for (const auto& path : paths){
+            if (currentIndex == choice){
+                std::cout << "Keeping:" << path << std::endl;
+            } else{
+                if(std::filesystem::remove(path)){
+                    std::cout << "Deleted" << path << std::endl;
+                }
+                else {
+                    std::cerr << "Failed to delete: " << path << std::endl;
+                }
+            }
+            currentIndex++;
+        }
+    }
+}
+
+
+int main(int argc, char* argv[]){
+    bool recursive = false;
+    std::string directory;
+
+    for (int i = 1; i< argc; i++){
+        std::string arg = argv[i];
+
+        if (arg == "-r" || arg == "--recursive"){
+            recursive = true;
+        } else {
+            directory = arg;
+        }
+    };
+
+    if (directory.empty()){
+        std::cerr << "Error: Directory path is required." << std::endl;
+        std::cout << "Usage: " << argv[0] << " <directory_path>" << std::endl;
+        return 1;
+    };
 
     std::cout << "This is a c++ learning project for finding duplicate files" << std::endl;
-    std::string directory = "/Users/harry_chung/Downloads/"; 
 
-    std::unordered_map<size_t, std::vector<std::string>> sizeMap = buildSizeMap(directory);
-    std::unordered_map<std::string, std::vector<std::string>> fileMap = findDuplicates(sizeMap);
-    printDuplicates(fileMap);
+    if (recursive){
+        std::vector<std::string> alldirs = getAllDirectories(directory);
+
+        for (const auto& dir : alldirs){
+            std::unordered_map<size_t, std::vector<std::string>> sizeMap = buildSizeMap(dir);
+            std::unordered_map<std::string, std::vector<std::string>> fileMap = findDuplicates(sizeMap);
+
+            if (!fileMap.empty()){
+                std::cout << "\n=== Processing directory: " << dir << " ===" << std::endl;
+                interactiveDelete(fileMap);
+            }
+            
+        }
+    } else {
+        std::unordered_map<size_t, std::vector<std::string>> sizeMap = buildSizeMap(directory);
+        std::unordered_map<std::string, std::vector<std::string>> fileMap = findDuplicates(sizeMap);
+        interactiveDelete(fileMap);
+
+    }
 
     return 0;
 }

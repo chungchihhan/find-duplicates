@@ -1,5 +1,7 @@
 # Compiled binary
-main
+fdup
+*.o
+*.out
 
 # IDE files
 .vscode
